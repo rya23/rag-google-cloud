@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cloud RAG Demo</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Decoupled RAG Demo</h1>
+      <p class="subtitle">Frontend -> Orchestrator -> Embedding/Reranker -> Postgres pgvector</p>
+
+      <form id="query-form">
+        <label for="query">Ask a finance question</label>
+        <textarea id="query" rows="4" placeholder="Example: What drove NVIDIA revenue growth?"></textarea>
+        <button type="submit">Run Query</button>
+      </form>
+
+      <section id="result" class="hidden">
+        <div class="meta">
+          <span id="path-used" class="badge"></span>
+          <span id="top-score"></span>
+        </div>
+        <h2>Answer</h2>
+        <p id="answer"></p>
+
+        <h3>Sources</h3>
+        <ul id="sources"></ul>
+      </section>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
