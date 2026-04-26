@@ -23,14 +23,13 @@ class RerankResponse(BaseModel):
 app = FastAPI(title="reranker-service")
 
 
-@app.on_event("startup")
-def startup() -> None:
-    get_model()
-
-
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "service": "reranker"}
+    return {
+        "status": "ok",
+        "service": "reranker",
+        "model_loaded": get_model.cache_info().currsize > 0,
+    }
 
 
 @app.post("/rerank", response_model=RerankResponse)

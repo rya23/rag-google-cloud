@@ -91,6 +91,8 @@ docker compose -f infra/docker-compose.yml up --build
 
 This project pins CPU-only PyTorch wheels in both inference services to avoid CUDA package downloads.
 
+The embedding model and reranker model load lazily on first request to keep startup and health checks fast.
+
 4. Seed data:
 
 ```bash

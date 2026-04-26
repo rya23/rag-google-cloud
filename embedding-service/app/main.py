@@ -18,14 +18,13 @@ class EmbedResponse(BaseModel):
 app = FastAPI(title="embedding-service")
 
 
-@app.on_event("startup")
-def startup() -> None:
-    get_model()
-
-
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "service": "embedding"}
+    return {
+        "status": "ok",
+        "service": "embedding",
+        "model_loaded": get_model.cache_info().currsize > 0,
+    }
 
 
 @app.post("/embed", response_model=EmbedResponse)
