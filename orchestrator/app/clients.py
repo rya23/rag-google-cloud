@@ -2,8 +2,18 @@ from typing import List
 
 import httpx
 from groq import Groq
+from google.auth.transport.requests import Request
+from google.oauth2 import id_token
 
 from app import config
+
+
+def _auth_headers(audience: str) -> dict:
+    if config.SERVICE_AUTH_MODE != "gcp_id_token":
+        return {}
+
+    token = id_token.fetch_id_token(Request(), audience)
+    return {"Authorization": f"Bearer {token}"}
 
 
 async def embed_texts(texts: List[str], dim: int) -> List[List[float]]:
@@ -11,9 +21,11 @@ async def embed_texts(texts: List[str], dim: int) -> List[List[float]]:
     for _ in range(2):
         try:
             async with httpx.AsyncClient(timeout=20.0) as client:
+                headers = _auth_headers(config.EMBEDDING_SERVICE_URL)
                 r = await client.post(
                     f"{config.EMBEDDING_SERVICE_URL}/embed",
                     json={"texts": texts, "dim": dim},
+                    headers=headers,
                 )
                 r.raise_for_status()
                 return r.json()["vectors"]
@@ -27,9 +39,11 @@ async def rerank(query: str, candidates: List[str]) -> List[dict]:
     for _ in range(2):
         try:
             async with httpx.AsyncClient(timeout=20.0) as client:
+                headers = _auth_headers(config.RERANKER_SERVICE_URL)
                 r = await client.post(
                     f"{config.RERANKER_SERVICE_URL}/rerank",
                     json={"query": query, "candidates": candidates},
+                    headers=headers,
                 )
                 r.raise_for_status()
                 return r.json()["ranked"]

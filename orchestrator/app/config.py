@@ -4,6 +4,7 @@ import os
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://rag:rag@localhost:5432/ragdb")
 EMBEDDING_SERVICE_URL = os.getenv("EMBEDDING_SERVICE_URL", "http://localhost:8010")
 RERANKER_SERVICE_URL = os.getenv("RERANKER_SERVICE_URL", "http://localhost:8020")
+SERVICE_AUTH_MODE = os.getenv("SERVICE_AUTH_MODE", "none")
 RERANK_QUALITY_THRESHOLD = float(os.getenv("RERANK_QUALITY_THRESHOLD", "0.30"))
 DEFAULT_TOP_K = int(os.getenv("DEFAULT_TOP_K", "5"))
 

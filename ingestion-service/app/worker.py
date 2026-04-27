@@ -1,4 +1,5 @@
 import asyncio
+import argparse
 from pathlib import Path
 
 from app import config
@@ -52,10 +53,12 @@ async def process_job(job: dict) -> None:
         raise RuntimeError("no_rows_inserted")
 
 
-async def run_worker() -> None:
+async def run_worker(run_once: bool = False) -> None:
     while True:
         job = claim_pending_job(config.INGEST_MAX_ATTEMPTS)
         if not job:
+            if run_once:
+                return
             await asyncio.sleep(config.INGEST_POLL_INTERVAL_SEC)
             continue
 
@@ -72,4 +75,11 @@ async def run_worker() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(run_worker())
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="Process all currently pending jobs and exit",
+    )
+    args = parser.parse_args()
+    asyncio.run(run_worker(run_once=args.once))

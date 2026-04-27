@@ -3,6 +3,7 @@ import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://rag:rag@localhost:5432/ragdb")
 EMBEDDING_SERVICE_URL = os.getenv("EMBEDDING_SERVICE_URL", "http://localhost:8010")
+SERVICE_AUTH_MODE = os.getenv("SERVICE_AUTH_MODE", "none")
 
 INGEST_UPLOAD_DIR = os.getenv("INGEST_UPLOAD_DIR", "/app/uploads")
 INGEST_MAX_FILE_MB = int(os.getenv("INGEST_MAX_FILE_MB", "10"))

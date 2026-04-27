@@ -6,3 +6,4 @@ psycopg[binary]==3.2.3
 langgraph==0.2.62
 langchain-core==0.3.25
 groq==0.13.1
+google-auth==2.37.0
