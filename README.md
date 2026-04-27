@@ -350,22 +350,3 @@ The browser never directly talks to:
 - ingestion worker
 
 Those are all internal backend dependencies.
-
-## 13. Good Interview Summary
-
-A short summary of the architecture is:
-
-- public frontend calls a public orchestrator
-- orchestrator talks to private services using IAM-authenticated ID tokens
-- ingestion API uploads files to Cloud Storage and emits Pub/Sub events
-- Pub/Sub push triggers a private Cloud Run worker
-- worker processes the file, writes chunks and embeddings to Cloud SQL, and marks job state
-- Cloud SQL stores both document chunks and ingestion metadata
-- Cloud Storage stores the source files so the worker can process them asynchronously
-
-## 14. Notes and Caveats
-
-- The ingestion API and worker should use separate service accounts.
-- If you use Pub/Sub push, the worker should be an HTTP service, not a background subscriber.
-- If you later want a true background worker, use Compute Engine, GKE, or a queue system that fits long-lived processes better.
-- This document reflects the current repo direction: orchestrator-driven public access and private backend services with IAM-authenticated service-to-service traffic.
