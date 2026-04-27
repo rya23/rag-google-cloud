@@ -8,6 +8,7 @@ from google.cloud import storage
 
 from app import config
 from app.db import create_job, get_job, list_recent_jobs
+from app.pubsub import publish_ingestion_job
 
 
 ALLOWED_EXTENSIONS = {".txt", ".md"}
@@ -86,6 +87,10 @@ async def ingest_file(file: UploadFile = File(...)) -> JobCreateResponse:
     storage_path = upload_to_gcs(raw, safe_name, config.GCS_BUCKET)
 
     job_id = create_job(filename=safe_name, storage_path=storage_path)
+
+    # Publish job to Pub/Sub for async processing
+    publish_ingestion_job(job_id, safe_name, storage_path)
+
     return JobCreateResponse(job_id=job_id, status="pending")
 
 
