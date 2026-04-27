@@ -12,3 +12,6 @@ INGEST_CHUNK_OVERLAP = int(os.getenv("INGEST_CHUNK_OVERLAP", "120"))
 INGEST_POLL_INTERVAL_SEC = int(os.getenv("INGEST_POLL_INTERVAL_SEC", "2"))
 INGEST_BATCH_SIZE = int(os.getenv("INGEST_BATCH_SIZE", "16"))
 INGEST_MAX_ATTEMPTS = int(os.getenv("INGEST_MAX_ATTEMPTS", "3"))
+
+# GCS uploads bucket name (used to store uploaded files)
+GCS_BUCKET = os.getenv("GCS_BUCKET", "matryoshka-search-uploads")

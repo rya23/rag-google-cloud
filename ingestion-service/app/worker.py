@@ -1,6 +1,7 @@
 import asyncio
 import argparse
 from pathlib import Path
+from google.cloud import storage
 
 from app import config
 from app.chunking import chunk_text
@@ -13,6 +14,15 @@ from app.db import (
 )
 
 
+def download_from_gcs(gcs_uri: str) -> str:
+    client = storage.Client()
+    without_prefix = gcs_uri[len("gs://") :]
+    bucket_name, blob_path = without_prefix.split("/", 1)
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(blob_path)
+    return blob.download_as_text(encoding="utf-8")
+
+
 def _source_from_filename(filename: str) -> str:
     base = Path(filename).stem.lower().strip()
     safe = "".join(ch if ch.isalnum() or ch in {"-", "_"} else "-" for ch in base)
@@ -20,11 +30,15 @@ def _source_from_filename(filename: str) -> str:
 
 
 async def process_job(job: dict) -> None:
-    path = Path(job["storage_path"])
-    if not path.exists():
-        raise FileNotFoundError(f"missing_upload: {path}")
+    storage_path = job["storage_path"]
+    if isinstance(storage_path, str) and storage_path.startswith("gs://"):
+        text = download_from_gcs(storage_path)
+    else:
+        path = Path(storage_path)
+        if not path.exists():
+            raise FileNotFoundError(f"missing_upload: {path}")
 
-    text = path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8", errors="replace")
     chunks = chunk_text(text, config.INGEST_CHUNK_SIZE, config.INGEST_CHUNK_OVERLAP)
     if not chunks:
         raise ValueError("empty_document_after_chunking")

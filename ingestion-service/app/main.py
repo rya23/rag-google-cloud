@@ -4,6 +4,7 @@ from typing import List
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from google.cloud import storage
 
 from app import config
 from app.db import create_job, get_job, list_recent_jobs
@@ -53,6 +54,14 @@ def startup() -> None:
     Path(config.INGEST_UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
 
 
+def upload_to_gcs(file_bytes: bytes, filename: str, bucket_name: str) -> str:
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(f"uploads/{filename}")
+    blob.upload_from_string(file_bytes)
+    return f"gs://{bucket_name}/uploads/{filename}"
+
+
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok", "service": "ingestion"}
@@ -72,13 +81,11 @@ async def ingest_file(file: UploadFile = File(...)) -> JobCreateResponse:
     if len(raw) > max_size:
         raise HTTPException(status_code=400, detail="file_too_large")
 
-    upload_dir = Path(config.INGEST_UPLOAD_DIR)
-    upload_dir.mkdir(parents=True, exist_ok=True)
     safe_name = file.filename.replace("/", "_").replace("..", "_")
-    storage_path = upload_dir / safe_name
-    storage_path.write_bytes(raw)
+    # upload file bytes to GCS and store the gs:// URI in the job
+    storage_path = upload_to_gcs(raw, safe_name, config.GCS_BUCKET)
 
-    job_id = create_job(filename=safe_name, storage_path=str(storage_path))
+    job_id = create_job(filename=safe_name, storage_path=storage_path)
     return JobCreateResponse(job_id=job_id, status="pending")
 
 
