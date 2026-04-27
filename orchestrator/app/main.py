@@ -1,11 +1,16 @@
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from app import config
-from app.clients import embed_texts
+from app.clients import (
+    create_ingestion_job,
+    embed_texts,
+    get_ingestion_job,
+    list_ingestion_jobs,
+)
 from app.db import list_source_chunks, list_sources, upsert_embeddings_for_source
 from app.graph import build_graph
 from app.seed import run_seed
@@ -40,7 +45,7 @@ graph = build_graph()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=config.cors_allow_origins(),
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,6 +61,40 @@ def health() -> dict:
 def seed() -> dict:
     run_seed()
     return {"status": "ok"}
+
+
+@app.post("/ingest/file")
+async def ingest_file(file: UploadFile = File(...)) -> dict:
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="filename_required")
+
+    raw = await file.read()
+    try:
+        return await create_ingestion_job(file.filename, raw, file.content_type)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502, detail=f"ingestion_proxy_failed: {exc}"
+        ) from exc
+
+
+@app.get("/ingest/jobs")
+async def ingest_jobs() -> dict:
+    try:
+        return await list_ingestion_jobs()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502, detail=f"ingestion_proxy_failed: {exc}"
+        ) from exc
+
+
+@app.get("/ingest/jobs/{job_id}")
+async def ingest_job_status(job_id: int) -> dict:
+    try:
+        return await get_ingestion_job(job_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502, detail=f"ingestion_proxy_failed: {exc}"
+        ) from exc
 
 
 @app.post("/ingest/source")

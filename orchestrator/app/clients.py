@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List, Optional
 
 import httpx
 from groq import Groq
@@ -16,12 +16,20 @@ def _auth_headers(audience: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _service_headers(
+    base_url: str, extra_headers: Optional[Dict[str, str]] = None
+) -> Dict[str, str]:
+    headers = dict(extra_headers or {})
+    headers.update(_auth_headers(base_url))
+    return headers
+
+
 async def embed_texts(texts: List[str], dim: int) -> List[List[float]]:
     last_error = None
     for _ in range(2):
         try:
             async with httpx.AsyncClient(timeout=20.0) as client:
-                headers = _auth_headers(config.EMBEDDING_SERVICE_URL)
+                headers = _service_headers(config.EMBEDDING_SERVICE_URL)
                 r = await client.post(
                     f"{config.EMBEDDING_SERVICE_URL}/embed",
                     json={"texts": texts, "dim": dim},
@@ -39,7 +47,7 @@ async def rerank(query: str, candidates: List[str]) -> List[dict]:
     for _ in range(2):
         try:
             async with httpx.AsyncClient(timeout=20.0) as client:
-                headers = _auth_headers(config.RERANKER_SERVICE_URL)
+                headers = _service_headers(config.RERANKER_SERVICE_URL)
                 r = await client.post(
                     f"{config.RERANKER_SERVICE_URL}/rerank",
                     json={"query": query, "candidates": candidates},
@@ -50,6 +58,69 @@ async def rerank(query: str, candidates: List[str]) -> List[dict]:
         except Exception as exc:
             last_error = exc
     raise RuntimeError(f"reranker_call_failed: {last_error}")
+
+
+async def create_ingestion_job(
+    filename: str,
+    raw: bytes,
+    content_type: Optional[str] = None,
+) -> dict:
+    last_error = None
+    for _ in range(2):
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                headers = _service_headers(config.INGESTION_SERVICE_URL)
+                files = {
+                    "file": (
+                        filename,
+                        raw,
+                        content_type or "application/octet-stream",
+                    )
+                }
+                r = await client.post(
+                    f"{config.INGESTION_SERVICE_URL}/ingest/file",
+                    files=files,
+                    headers=headers,
+                )
+                r.raise_for_status()
+                return r.json()
+        except Exception as exc:
+            last_error = exc
+    raise RuntimeError(f"ingestion_create_job_failed: {last_error}")
+
+
+async def list_ingestion_jobs() -> dict:
+    last_error = None
+    for _ in range(2):
+        try:
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                headers = _service_headers(config.INGESTION_SERVICE_URL)
+                r = await client.get(
+                    f"{config.INGESTION_SERVICE_URL}/ingest/jobs",
+                    headers=headers,
+                )
+                r.raise_for_status()
+                return r.json()
+        except Exception as exc:
+            last_error = exc
+    raise RuntimeError(f"ingestion_list_jobs_failed: {last_error}")
+
+
+async def get_ingestion_job(job_id: int) -> dict:
+    last_error = None
+    for _ in range(2):
+        try:
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                headers = _service_headers(config.INGESTION_SERVICE_URL)
+                r = await client.get(
+                    f"{config.INGESTION_SERVICE_URL}/ingest/jobs/{job_id}",
+                    headers=headers,
+                )
+                r.raise_for_status()
+                return r.json()
+        except Exception as exc:
+            last_error = exc
+    raise RuntimeError(f"ingestion_get_job_failed: {last_error}")
 
 
 def generate_answer(query: str, contexts: List[str]) -> str:
