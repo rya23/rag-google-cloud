@@ -2,48 +2,6 @@
 
 This document describes how the decoupled RAG system is deployed on Google Cloud Platform, how the services talk to each other, and how IAM, Cloud Storage, Pub/Sub, Cloud SQL, and Cloud Run are configured.
 
-```mermaid
-flowchart LR
-  Browser[Browser / User]
-
-  subgraph Public[Public Cloud Run]
-    FE[Frontend]
-    ORCH[Orchestrator]
-  end
-
-  subgraph Private[Private Cloud Run]
-    EMB[Embedding Service]
-    RER[Reranker Service]
-    ING[Ingestion API]
-    WRK[Ingestion Worker]
-  end
-
-  subgraph Data[Managed Data Services]
-    GCS[(Cloud Storage Bucket)]
-    SQL[(Cloud SQL PostgreSQL + pgvector)]
-    PS[(Pub/Sub Topic + Push Subscription)]
-  end
-
-  Groq[(Groq API)]
-
-  Browser --> FE --> ORCH
-  ORCH -->|ID token / IAM| EMB
-  ORCH -->|ID token / IAM| RER
-  ORCH -->|ID token / IAM| ING
-  ORCH -->|LLM request| Groq
-
-  ING -->|upload file| GCS
-  ING -->|create job| SQL
-  ING -->|publish event| PS
-
-  PS -->|push HTTP request| WRK
-  WRK -->|read file| GCS
-  WRK -->|claim job / write chunks| SQL
-  WRK -->|embed chunks| EMB
-
-  ORCH -->|query chunks| SQL
-```
-
 ## 1. System Topology
 
 The system is split into public and private Cloud Run services so the browser only talks to one public entrypoint, and all internal service calls happen server-to-service with IAM.
