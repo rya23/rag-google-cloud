@@ -17,6 +17,22 @@
         <button type="submit">Run Query</button>
       </form>
 
+      <hr />
+
+      <form id="upload-form">
+        <label for="file">Upload .txt or .md for ingestion</label>
+        <input id="file" type="file" accept=".txt,.md,text/plain,text/markdown" />
+        <div class="row-actions">
+          <button type="submit">Upload File</button>
+          <button id="refresh-jobs" type="button">Refresh Jobs</button>
+        </div>
+      </form>
+
+      <section id="jobs-panel" class="hidden">
+        <h2>Ingestion Jobs</h2>
+        <ul id="jobs"></ul>
+      </section>
+
       <section id="result" class="hidden">
         <div class="meta">
           <span id="path-used" class="badge"></span>

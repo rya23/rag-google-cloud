@@ -43,6 +43,12 @@ form {
   margin-top: 1rem;
 }
 
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 1.25rem 0;
+}
+
 textarea {
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -61,6 +67,18 @@ button {
   cursor: pointer;
 }
 
+input[type="file"] {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem;
+  background: #f9fbff;
+}
+
+.row-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .meta {
   display: flex;
   gap: 0.75rem;
@@ -76,6 +94,10 @@ button {
 }
 
 #sources {
+  padding-left: 1.1rem;
+}
+
+#jobs {
   padding-left: 1.1rem;
 }
 

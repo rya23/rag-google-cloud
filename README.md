@@ -15,11 +15,16 @@ A simple 4-layer Retrieval-Augmented Generation project designed to learn cloud 
    - Calls Groq LLM for final answer generation.
 
 3. **Inference Layer (Decoupled Artifacts)**
-   - **Embedding service**: Matryoshka embedding model, supports `128` and `768` dimensions.
-   - **Reranker service**: Cross-encoder reranker.
-   - Both are separate services so one can fail without crashing the other.
+    - **Embedding service**: Matryoshka embedding model, supports `128` and `768` dimensions.
+    - **Reranker service**: Cross-encoder reranker.
+    - Both are separate services so one can fail without crashing the other.
 
-4. **Data Layer (PostgreSQL + pgvector)**
+4. **Ingestion Layer (Async Queue + Worker)**
+   - **Ingestion API service** accepts `.txt` / `.md` uploads and creates ingestion jobs.
+   - **Ingestion worker** polls a PostgreSQL-backed queue (`ingestion_jobs`) with `FOR UPDATE SKIP LOCKED`.
+   - Worker chunks text (`800` with `120` overlap), calls embedding service for both dimensions, and stores chunks.
+
+5. **Data Layer (PostgreSQL + pgvector)**
    - Stores chunks and metadata.
    - Stores both `embedding_128` and `embedding_768` in the same table.
 
@@ -61,8 +66,13 @@ A simple 4-layer Retrieval-Augmented Generation project designed to learn cloud 
 │   ├── app/
 │   ├── Dockerfile
 │   └── requirements.txt
+├── ingestion-service/
+│   ├── app/
+│   ├── Dockerfile
+│   └── requirements.txt
 ├── data/
 │   ├── init/
+│   ├── migrations/
 │   └── seed/
 ├── infra/
 │   └── docker-compose.yml
@@ -99,16 +109,41 @@ The embedding model and reranker model load lazily on first request to keep star
 curl -X POST http://localhost:8000/seed
 ```
 
-5. Generate embeddings for all sources:
+5. Start async ingestion by uploading a markdown or text file:
+
+```bash
+curl -X POST http://localhost:8030/ingest/file -F "file=@README.md"
+```
+
+6. Check ingestion jobs:
+
+```bash
+curl http://localhost:8030/ingest/jobs
+```
+
+7. (Optional) Generate embeddings for built-in seed sources:
 
 ```bash
 curl -X POST http://localhost:8000/ingest/all
 ```
 
-6. Open UI:
+8. Open UI:
 
 ```text
 http://localhost:3000
+```
+
+If your DB was created before ingestion tables existed, run:
+
+```bash
+docker compose -f infra/docker-compose.yml exec -T postgres psql -U rag -d ragdb < data/migrations/001_ingestion.sql
+```
+
+Easiest clean reset:
+
+```bash
+docker compose -f infra/docker-compose.yml down -v
+docker compose -f infra/docker-compose.yml up --build
 ```
 
 ## Core APIs
@@ -125,6 +160,11 @@ http://localhost:3000
 - Reranker service
   - `GET /health`
   - `POST /rerank`
+- Ingestion service
+  - `GET /health`
+  - `POST /ingest/file` (multipart upload)
+  - `GET /ingest/jobs`
+  - `GET /ingest/jobs/{job_id}`
 
 ## Cloud Run deployment path (Path 1)
 

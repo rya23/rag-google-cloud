@@ -58,6 +58,8 @@ services:
         condition: service_healthy
       reranker-service:
         condition: service_healthy
+      ingestion-service:
+        condition: service_healthy
     ports:
       - "8000:8000"
     healthcheck:
@@ -76,5 +78,60 @@ services:
     ports:
       - "3000:3000"
 
+  ingestion-service:
+    build:
+      context: ../ingestion-service
+    container_name: rag-ingestion
+    env_file:
+      - ../.env
+    environment:
+      INGEST_UPLOAD_DIR: /app/uploads
+      INGEST_MAX_FILE_MB: ${INGEST_MAX_FILE_MB:-10}
+      INGEST_CHUNK_SIZE: ${INGEST_CHUNK_SIZE:-800}
+      INGEST_CHUNK_OVERLAP: ${INGEST_CHUNK_OVERLAP:-120}
+      INGEST_POLL_INTERVAL_SEC: ${INGEST_POLL_INTERVAL_SEC:-2}
+      INGEST_BATCH_SIZE: ${INGEST_BATCH_SIZE:-16}
+      INGEST_MAX_ATTEMPTS: ${INGEST_MAX_ATTEMPTS:-3}
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      embedding-service:
+        condition: service_healthy
+    ports:
+      - "8030:8030"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8030/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ingestion-worker:
+    build:
+      context: ../ingestion-service
+    container_name: rag-ingestion-worker
+    env_file:
+      - ../.env
+    environment:
+      INGEST_UPLOAD_DIR: /app/uploads
+      INGEST_MAX_FILE_MB: ${INGEST_MAX_FILE_MB:-10}
+      INGEST_CHUNK_SIZE: ${INGEST_CHUNK_SIZE:-800}
+      INGEST_CHUNK_OVERLAP: ${INGEST_CHUNK_OVERLAP:-120}
+      INGEST_POLL_INTERVAL_SEC: ${INGEST_POLL_INTERVAL_SEC:-2}
+      INGEST_BATCH_SIZE: ${INGEST_BATCH_SIZE:-16}
+      INGEST_MAX_ATTEMPTS: ${INGEST_MAX_ATTEMPTS:-3}
+    command: ["python", "-m", "app.worker"]
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      embedding-service:
+        condition: service_healthy
+      ingestion-service:
+        condition: service_healthy
+
 volumes:
   pgdata:
+  uploads:
